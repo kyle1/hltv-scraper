@@ -19,8 +19,17 @@ class PickBan:
 class MatchMap:
     def __init__(self):
         self._match_id = None
-        self._map_number = None
+        self._match_map_number = None
         self._map_name = None
         self._team_one_id = None
         self._team_two_id = None
-        #todo
+
+        self._team_one_first_half_side = None
+        self._team_one_first_half_round_wins = None
+        self._team_one_second_half_side = None
+        self._team_one_second_half_round_wins = None
+
+        self._team_two_first_half_side = None
+        self._team_two_first_half_round_wins = None
+        self._team_two_second_half_side = None
+        self._team_two_second_half_round_wins = None
