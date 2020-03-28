@@ -11,6 +11,19 @@ class Team:
     def parse_team(tr):
         print(tr)
 
+    @property
+    def dataframe(self):
+        fields_to_include = {
+            'CsgoTeamId': self._csgo_team_id,
+            'TeamName': self._team_name,
+        }
+        return pd.DataFrame([fields_to_include], index=None)
+
+    @property
+    def to_dict(self):
+        dataframe = self.dataframe
+        dic = dataframe.to_dict('records')[0]
+        return dic
 
 class Teams:
     def __init__(self):
@@ -26,4 +39,22 @@ class Teams:
         for table in teams_html('table').items():
             print(table.attr['class`'])
 
-teams = Teams()
+    def __repr__(self):
+        return self._players
+
+    def __iter__(self):
+        return iter(self.__repr__())
+
+    @property
+    def dataframes(self):
+        frames = []
+        for team in self.__iter__():
+            frames.append(team.dataframe)
+        return pd.concat(frames)
+
+    @property
+    def to_dicts(self):
+        dics = []
+        for team in self.__iter__():
+            dics.append(player.to_dict)
+        return dics
