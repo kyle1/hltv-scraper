@@ -4,7 +4,7 @@ from pyquery import PyQuery as pq
 from time import sleep
 
 
-class Match:
+class MatchBoxscore:
     def __init__(self, url):
         self._match_id = None
         self._match_url = None
@@ -27,10 +27,10 @@ class Match:
                 setattr(self, '_match_date_time', div.text())
             if div.attr['class'] == 'team1-gradient':
                 for a in div('a').items():
-                    setattr(self, '_team_one_id', a.attr['href'].split('/')[2])
+                    setattr(self, '_team1_id', a.attr['href'].split('/')[2])
             if div.attr['class'] == 'team2-gradient':
                 for a in div('a').items():
-                    setattr(self, '_team_two_id', a.attr['href'].split('/')[2])
+                    setattr(self, '_team2_id', a.attr['href'].split('/')[2])
             if div.attr['class'] == 'results-center-stats':
                 map_divs.append(div)
         match_maps = MatchMaps(self, map_divs)
@@ -49,7 +49,7 @@ class Match:
         return pd.DataFrame([fields_to_include], index=None)
 
 
-class MatchMap:
+class MatchMapBoxscore:
     def __init__(self, Match, map_number, url):
         self._match_id = None
         self._match_map_number = None
@@ -132,7 +132,7 @@ class MatchMap:
         return pd.DataFrame([fields_to_include], index=None)
 
 
-class MatchMaps:
+class MatchMapBoxscores:
     def __init__(self, Match, map_divs):
         self._match_maps = []
 

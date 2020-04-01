@@ -1,15 +1,23 @@
+import pandas as pd
 import requests
 from pyquery import PyQuery as pq
 
+
 class Team:
-    def __init__(self):
+    def __init__(self, tr):
         self._team_id = None
         self._team_name = None
 
-        self._get_teams()
+        self._parse_team(tr)
 
-    def parse_team(tr):
-        print(tr)
+    def _parse_team(self, tr):
+        for td in tr('td').items():
+            if 'teamCol-teams-overview' in td.attr['class']:
+                setattr(self, '_team_name', td.text())
+                for a in td('a').items():
+                    team_url = a.attr['href']
+                    team_id = team_url.split('/')[3]
+                    setattr(self, '_csgo_team_id', team_id)
 
     @property
     def dataframe(self):
@@ -25,22 +33,30 @@ class Team:
         dic = dataframe.to_dict('records')[0]
         return dic
 
+
 class Teams:
     def __init__(self):
-        self._teams = None
+        self._teams = []
 
         self._get_teams()
 
     def _get_teams(self):
         url = 'https://www.hltv.org/stats/teams'
-        #teams_html = pq(url, verify=False)
-        teams_html = requests.get(url, verify=False).content
-        
+        teams_html = pq(url, verify=False)
+        #teams_html = requests.get(url, verify=False)
+
         for table in teams_html('table').items():
-            print(table.attr['class`'])
+            # print(table)
+            first_row = True
+            for tr in table('tr').items():
+                if first_row:
+                    first_row = False
+                    continue
+                team = Team(tr)
+                self._teams.append(team)
 
     def __repr__(self):
-        return self._players
+        return self._teams
 
     def __iter__(self):
         return iter(self.__repr__())
@@ -56,5 +72,5 @@ class Teams:
     def to_dicts(self):
         dics = []
         for team in self.__iter__():
-            dics.append(player.to_dict)
+            dics.append(team.to_dict)
         return dics

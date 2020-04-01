@@ -1,21 +1,33 @@
+import pandas as pd
 import requests
 from pyquery import PyQuery as pq
 
 
 class Player:
     def __init__(self, tr):
-        self._player_id = None
+        self._csgo_player_id = None
         self._player_name = None
-        self._team_id = None
+        self._csgo_team_id = None
+
+        self._parse_player(tr)
 
     def _parse_player(self, tr):
         for td in tr('td').items():
             if 'player' in td.attr['class']:
-                setattr(self, '_player_name', td.text())
+                player_name = td.text()
+                setattr(self, '_player_name', player_name)
                 for a in td('a').items():
                     player_url = a.attr['href']
                     player_id = player_url.split('/')[3]
-                    setattr(self, '_player_id', player_id)
+                    setattr(self, '_csgo_player_id', player_id)
+                # print(player_name)
+            if 'team' in td.attr['class']:
+                for a in td('a').items():
+                    team_url = a.attr['href']
+                    team_id = team_url.split('/')[3]
+                    setattr(self, '_csgo_team_id', team_id)
+                    # The first team listed is the player's current team
+                    break
 
     @property
     def dataframe(self):
@@ -47,7 +59,7 @@ class Players:
 
     def _get_players(self):
         url = 'https://www.hltv.org/stats/players?startDate=all'
-        players_html = pq(url, verify=False, proxies={'http':'50.192.195.69'})
+        players_html = pq(url, verify=False)
         #players_html = requests.get(url, verify=False).content
         for table in players_html('table').items():
             first_row = True
@@ -71,4 +83,3 @@ class Players:
         for player in self.__iter__():
             dics.append(player.to_dict)
         return dics
-
