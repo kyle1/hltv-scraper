@@ -81,6 +81,12 @@ class Schedule:
 
         self._get_matches()
 
+    def __repr__(self):
+        return self._matches
+
+    def __iter__(self):
+        return iter(self.__repr__())
+
     def _get_matches(self):
         today = datetime.today().date()
         tomorrow = today + timedelta(days=1)
@@ -99,12 +105,6 @@ class Schedule:
                             self._matches.append(match)
                             sleep(5)
                             break
-
-    def __repr__(self):
-        return self._matches
-
-    def __iter__(self):
-        return iter(self.__repr__())
 
     @property
     def dataframes(self):

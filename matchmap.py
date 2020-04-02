@@ -32,23 +32,26 @@ class MatchMapBoxscore:
         self._team2_kills = None
         self._team2_deaths = None
         self._team2_assists = None
-        self._player_stats = None
 
-        setattr(self, '_csgo_match_map_id', url.split('/')[-2])
+        self._team1_players = None
+        self._team2_players = None
+
+        match_map_id = url.split('/')[-2]
+        setattr(self, '_csgo_match_map_id', match_map_id)
         setattr(self, '_csgo_match_id', Match._csgo_match_id)
         setattr(self, '_match_map_url', url)
         setattr(self, '_map_number', map_number)
         setattr(self, '_team1_id', Match._team1_id)
         setattr(self, '_team2_id', Match._team2_id)
 
-        self._get_match_map_stats(url, Match, pick_bans)
+        self._get_match_map_stats(url, Match, pick_bans, match_map_id)
 
-    def _get_match_map_stats(self, url, Match, pick_bans):
+    def _get_match_map_stats(self, url, Match, pick_bans, match_map_id):
         print('Getting match map stats from ' + url)
-        map_html = pq(url)
+        overview_html = pq(url)
         stats_tables = []
         round_win_spans = []
-        for div in map_html('div').items():
+        for div in overview_html('div').items():
             if div.attr['class'] == 'stats-match-maps':
                 for a in div('a').items():
                     if 'inactive' not in a.attr['class']:
@@ -121,16 +124,14 @@ class MatchMapBoxscore:
         setattr(self, '_team1_first_kills', team1_first_kills)
         setattr(self, '_team2_first_kills', team2_first_kills)
 
-        for table in map_html('table').items():
+        stats_tables = []
+        for table in overview_html('table').items():
             if table.attr['class'] == 'stats-table':
                 stats_tables.append(table)
-
-        # first_row = True
-        # for tr in table('tr').items():
-        #     if first_row:
-        #         first_row = False
-        #         continue
-        #     print(tr.text())
+        team1_players = MatchMapPlayersStats(match_map_id, Match._team1_id, stats_tables[0], performance_html)
+        team2_players = MatchMapPlayersStats(match_map_id, Match._team2_id, stats_tables[1], performance_html)
+        setattr(self, '_team1_players', team1_players)
+        setattr(self, '_team2_players', team2_players)
 
     def _team_picked_map(self, pick_bans, team1_name, team2_name, map_name):
         for decision in pick_bans:
@@ -194,6 +195,12 @@ class MatchMapBoxscore:
         return pd.DataFrame([fields_to_include], index=None)
 
     @property
+    def player_dataframes(self):
+        team1_players = self._team1_players.dataframes
+        team2_players = self._team2_players.dataframes
+        return pd.concat([team1_players, team2_players])
+
+    @property
     def to_dict(self):
         dataframe = self.dataframe
         dic = dataframe.to_dict('records')[0]
@@ -236,4 +243,130 @@ class MatchMapBoxscores:
         dics = []
         for match_map in self.__iter__():
             dics.append(match_map.to_dict)
+        return dics
+
+
+class MatchMapPlayerStats:
+    def __init__(self, tr, match_map_id, team_id):
+        self._csgo_player_id = None
+        self._csgo_match_map_id = None
+        self._csgo_team_id = None
+        self._kills = None
+        self._assists = None
+        self._flash_assists = None
+        self._deaths = None
+        self._kast = None
+        self._adr = None
+        self._rating = None
+        self._first_kills = None
+        self._one_vs_five_wins = None
+        self._one_vs_four_wins = None
+        self._one_vs_three_wins = None
+        self._one_vs_two_wins = None
+        self._one_vs_one_wins = None
+        self._five_kill_rounds = None
+        self._four_kill_rounds = None
+        self._three_kill_rounds = None
+        self._two_kill_rounds = None
+        self._one_kill_rounds = None
+
+        setattr(self, '_csgo_match_map_id', match_map_id)
+        setattr(self, '_csgo_team_id', team_id)
+        self._parse_player_stats(tr)
+
+    def _parse_player_stats(self, tr):
+        for td in tr('td').items():
+            if td.attr['class'] == 'st-player':
+                for a in td('a').items():
+                    player_id = a.attr['href'].split('/')[-2]
+                    setattr(self, '_csgo_player_id', player_id)
+            elif td.attr['class'] == 'st-kills':
+                kills = td.text().split()[0]
+                setattr(self, '_kills', kills)
+            elif td.attr['class'] == 'st-assists':
+                assists = td.text().split()[0]
+                flash_assists = td.text().split()[1].replace('(', '').replace(')', '')
+                setattr(self, '_assists', assists)
+                setattr(self, '_flash_assists', flash_assists)
+            elif td.attr['class'] == 'st-deaths':
+                deaths = td.text()
+                setattr(self, '_deaths', deaths)
+            elif td.attr['class'] == 'st-kdratio':  # this is actually KAST
+                kast = td.text().replace('%', '')
+                setattr(self, '_kast', kast)
+            elif td.attr['class'] == 'st-adr':
+                adr = td.text()
+                setattr(self, '_adr', adr)
+
+    @property
+    def dataframe(self):
+        fields_to_include = {
+            'CsgoPlayerId': self._csgo_player_id,
+            'CsgoMatchMapId': self._csgo_match_map_id,
+            'CsgoTeamId': self._csgo_team_id,
+            'Kills': self._kills,
+            'Assists': self._assists,
+            'FlashAssists': self._flash_assists,
+            'Deaths': self._deaths,
+            'Kast': self._kast,
+            'Adr': self._adr
+        }
+        return pd.DataFrame([fields_to_include], index=None)
+
+    @property
+    def to_dict(self):
+        dataframe = self.dataframe
+        dic = dataframe.to_dict('records')[0]
+        return dic
+
+
+class MatchMapPlayersStats:
+    def __init__(self, match_map_id, team_id, stats_table, performance_html):
+        self._players = []
+
+        self._get_player_stats(match_map_id, team_id, stats_table, performance_html)
+
+    def __repr__(self):
+        return self._players
+
+    def __iter__(self):
+        return iter(self.__repr__())
+
+    def _get_player_stats(self, match_map_id, team_id, stats_table, performance_html):
+        # stats_tables = []
+        # for table in overview_html('table').items():
+        #     if table.attr['class'] == 'stats-table':
+        #         stats_tables.append(table)
+
+        # team1_stats = stats_tables[0]
+        # team2_stats = stats_tables[1]
+
+        first_row = True
+        for tr in stats_table('tr').items():
+            if first_row:
+                first_row = False  # Skip header row
+                continue
+            player_stats = MatchMapPlayerStats(tr, match_map_id, team_id)
+            self._players.append(player_stats)
+
+        # first_row = True
+        # for tr in team2_stats('tr').items():
+        #     if first_row:
+        #         first_row = False  # Skip header row
+        #         continue
+        #     player_stats = MatchMapPlayerStats(tr, match_map_id, Match._team2_id)
+        #     self._team2_players.append(player_stats)
+
+    @property
+    def dataframes(self):
+        frames = []
+        for player in self.__iter__():
+            frames.append(player.dataframe)
+        return pd.concat(frames)
+
+    @property
+    def to_dicts(self):
+        dics = []
+        for player in self.__iter__():
+            dics.append(player.to_dict)
         return dics

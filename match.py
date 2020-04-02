@@ -144,6 +144,7 @@ class MatchBoxscores:
                     match = MatchBoxscore(match_url)
                     self._matches.append(match)
                     sleep(5)
+                    return
 
     @property
     def dataframes(self):
@@ -158,9 +159,3 @@ class MatchBoxscores:
         for match in self.__iter__():
             dics.append(match.to_dict)
         return dics
-
-
-class MatchMapPlayerStats:
-    def __init__(self):
-        self._player_id = None
-        # todo
