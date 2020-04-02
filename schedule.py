@@ -35,7 +35,6 @@ class Match:
                         setattr(self, '_match_time', sub_div.text())
             if div.attr['class'] == 'date':
                 date_obj = parser.parse(div.text())
-                # print(date_obj)
                 setattr(self, '_match_date', date_obj.date())
             if div.attr['class'] == 'team1-gradient':
                 for a in div('a').items():
