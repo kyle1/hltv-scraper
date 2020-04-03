@@ -26,6 +26,7 @@ class MatchBoxscore:
         self._get_match(url)
 
     def _get_match(self, url):
+        print('Getting match data from ' + url)
         match_html = pq(url, verify=False)
         map_divs = []
         pick_bans = []
@@ -116,6 +117,7 @@ class MatchBoxscores:
     def _get_matches(self):
         today = datetime.today().date()
         yesterday = today + timedelta(days=-1)
+        d = today + timedelta(days=-5)
 
         url = 'https://www.hltv.org/results'
         results_html = pq(url, verify=False)
@@ -128,7 +130,7 @@ class MatchBoxscores:
                         header_text = sub_div.text().splitlines()[0]
                         date_str = header_text.split('for')[1].strip()
                         date_obj = parser.parse(date_str).date()
-                        if date_obj == yesterday:
+                        if date_obj == d:
                             print(date_obj)
                             found_date_sublist = True
                     if found_date_sublist:
@@ -144,7 +146,6 @@ class MatchBoxscores:
                     match = MatchBoxscore(match_url)
                     self._matches.append(match)
                     sleep(5)
-                    return
 
     @property
     def dataframes(self):
