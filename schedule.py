@@ -1,4 +1,5 @@
 import pandas as pd
+import requests
 from datetime import datetime, timedelta
 from dateutil import parser
 from pyquery import PyQuery as pq
@@ -10,12 +11,11 @@ class Match:
         self._csgo_match_id = None
         self._match_url = None
         self._match_date_time = None
-        self._match_date = None
-        self._match_time = None
         # self._match_description = None
         self._team1_id = None
         self._team2_id = None
         self._best_of = None
+        self._csgo_event_id = None
 
         self._get_match(url)
 
@@ -26,13 +26,17 @@ class Match:
         full_url = 'https://www.hltv.org' + url
         setattr(self, '_match_url', full_url)
 
+        print('Getting match data from ' + full_url)
         match_html = pq(full_url, verify=False)
         map_divs = []
         for div in match_html('div').items():
             if div.attr['class'] == 'timeAndEvent':
                 for sub_div in div('div').items():
                     if sub_div.attr['class'] == 'time':
-                        setattr(self, '_match_time', sub_div.text())
+                        match_time = sub_div.text()
+                    if sub_div.attr['class'] == 'event text-ellipsis':
+                        for a in sub_div('a').items():
+                            setattr(self, '_csgo_event_id', a.attr['href'].split('/')[2])
             if div.attr['class'] == 'date':
                 date_obj = parser.parse(div.text())
                 setattr(self, '_match_date', date_obj.date())
@@ -45,9 +49,9 @@ class Match:
             if div.attr['class'] == 'standard-box veto-box':
                 best_of_text = div.text()
                 best_of = best_of_text.split()[2]
-                setattr(self, '_best_of', best_of)
+                setattr(self, '_best_of', best_of)  # FIX
 
-        hours_into_day = float(self._match_time.split(':')[0]) + float(self._match_time.split(':')[1]) / 60.0
+        hours_into_day = float(match_time.split(':')[0]) + float(match_time.split(':')[1]) / 60.0
         dt = date_obj + timedelta(hours=hours_into_day)
         setattr(self, '_match_date_time', dt)
 
@@ -57,12 +61,11 @@ class Match:
             'CsgoMatchId': self._csgo_match_id,
             'MatchUrl': self._match_url,
             'MatchDateTime': self._match_date_time,
-            'MatchDate': self._match_date,
-            'MatchTime': self._match_time,
             # 'MatchDescription': self._match_description,
             'Team1Id': self._team1_id,
             'Team2Id': self._team2_id,
-            'BestOf': self._best_of
+            'BestOf': self._best_of,
+            'CsgoEventId': self._csgo_event_id
         }
         return pd.DataFrame([fields_to_include], index=None)
 
@@ -71,7 +74,6 @@ class Match:
         dataframe = self.dataframe
         dic = dataframe.to_dict('records')[0]
         dic['MatchDateTime'] = dic['MatchDateTime'].isoformat()
-        dic['MatchDate'] = dic['MatchDate'].isoformat()
         return dic
 
 
@@ -79,7 +81,8 @@ class Schedule:
     def __init__(self):
         self._matches = []
 
-        self._get_matches()
+        # self._get_matches()
+        self._get_old_matches()  # for past schedules
 
     def __repr__(self):
         return self._matches
@@ -105,6 +108,57 @@ class Schedule:
                             self._matches.append(match)
                             sleep(5)
                             break
+
+    def _get_old_matches(self):
+        # temp to get past schedule:
+        first_date = datetime.strptime('2019-01-01', '%Y-%m-%d').date()
+        print(first_date)
+        today = datetime.today().date()
+        yesterday = today + timedelta(days=-1)
+        d = today + timedelta(days=-1)
+        offset = 10300
+        while offset >= 0:
+            if offset == 0:
+                url = 'https://www.hltv.org/results'
+            else:
+                url = 'https://www.hltv.org/results?offset=' + str(offset)
+            print('Getting past schedule data from ' + url)
+            results_html = pq(url, verify=False)
+            match_urls = []
+            for div in results_html('div').items():
+                if div.attr['class'] == 'results-all':
+                    for sub_div in div('div').items():
+                        found_date_sublist = False
+                        if sub_div.attr['class'] == 'results-sublist':
+                            # print(sub_div.text())
+                            header_text = sub_div.text().splitlines()[0]
+                            date_str = header_text.split('for')[1].strip()
+                            date_obj = parser.parse(date_str).date()
+                            if date_obj >= first_date:
+                                print('Getting schedule for ' + date_str)
+                                date_sublist_div = sub_div
+                                for div in date_sublist_div('div').items():
+                                    if div.attr['class'] == 'result-con':
+                                        for a in div('a').items():
+                                            # match = Match(a.attr['href'])
+                                            # self._matches.append(match)
+                                            # sleep(8)
+                                            match_urls.append(a.attr['href'])
+                            else:
+                                print('NOT getting schedule for ' + date_str)
+
+            match_urls.reverse()  # So matches are in chronological order
+            for match_url in match_urls:
+                print('Getting match data for ' + url)
+                match = Match(match_url)
+                self._matches.append(match)
+                sleep(8)
+
+            print(self.dataframes)
+            response = requests.post('https://localhost:44374/api/csgo/schedule',
+                                     json=self.to_dicts, verify=False).json()
+            print(response)
+            offset = offset - 100
 
     @property
     def dataframes(self):

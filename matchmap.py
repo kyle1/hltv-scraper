@@ -22,6 +22,8 @@ class MatchMapBoxscore:
         self._team1_kills = None
         self._team1_deaths = None
         self._team1_assists = None
+        self._team1_bombs_planted = None
+        self._team1_bombs_defused = None
         self._team2_id = None
         self._team2_round_wins = None
         self._team2_first_half_side = None
@@ -32,6 +34,8 @@ class MatchMapBoxscore:
         self._team2_kills = None
         self._team2_deaths = None
         self._team2_assists = None
+        self._team2_bombs_planted = None
+        self._team2_bombs_defused = None
 
         self._team1_players = None
         self._team2_players = None
@@ -211,6 +215,8 @@ class MatchMapBoxscore:
             'Team1Kills': self._team1_kills,
             'Team1Deaths': self._team1_deaths,
             'Team1Assists': self._team1_assists,
+            'Team1BombsPlanted': self._team1_bombs_planted,
+            'Team1BombsDefused': self._team1_bombs_defused,
             'Team2Id': self._team2_id,
             'Team2RoundWins': self._team2_round_wins,
             'Team2FirstHalfSide': self._team2_first_half_side,
@@ -220,6 +226,8 @@ class MatchMapBoxscore:
             'Team2Kills': self._team2_kills,
             'Team2Deaths': self._team2_deaths,
             'Team2Assists': self._team2_assists,
+            'Team2BombsPlanted': self._team2_bombs_planted,
+            'Team2BombsDefused': self._team2_bombs_defused,
         }
         return pd.DataFrame([fields_to_include], index=None)
 
@@ -258,7 +266,7 @@ class MatchMapBoxscores:
                 match_map = MatchMapBoxscore(Match, pick_bans, map_number, map_url)
                 self._match_maps.append(match_map)
                 map_number += 1
-                sleep(5)
+                sleep(10)
 
     @property
     def dataframes(self):
@@ -311,10 +319,12 @@ class MatchMapPlayerStats:
                     setattr(self, '_csgo_player_id', player_id)
             elif td.attr['class'] == 'st-kills':
                 kills = td.text().split()[0]
+                headshot_kills = td.text().split()[1].replace('(', '').replace(')', '').strip()
                 setattr(self, '_kills', kills)
+                setattr(self, '_headshot_kills', headshot_kills)
             elif td.attr['class'] == 'st-assists':
                 assists = td.text().split()[0]
-                flash_assists = td.text().split()[1].replace('(', '').replace(')', '')
+                flash_assists = td.text().split()[1].replace('(', '').replace(')', '').strip()
                 setattr(self, '_assists', assists)
                 setattr(self, '_flash_assists', flash_assists)
             elif td.attr['class'] == 'st-deaths':

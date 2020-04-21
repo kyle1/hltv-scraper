@@ -27,7 +27,7 @@ class MatchBoxscore:
 
     def _get_match(self, url):
         print('Getting match data from ' + url)
-        match_html = pq(url, verify=False)
+        match_html = pq(url, verify=True)
         map_divs = []
         pick_bans = []
         veto_box_count = 0
@@ -106,7 +106,8 @@ class MatchBoxscores:
     def __init__(self):
         self._matches = []
 
-        self._get_matches()
+        # self._get_matches()
+        self._get_old_matches()  # for past matches
 
     def __repr__(self):
         return self._matches
@@ -117,10 +118,10 @@ class MatchBoxscores:
     def _get_matches(self):
         today = datetime.today().date()
         yesterday = today + timedelta(days=-1)
-        d = today + timedelta(days=-5)
+        d = today + timedelta(days=-1)
 
         url = 'https://www.hltv.org/results'
-        results_html = pq(url, verify=False)
+        results_html = pq(url, verify=True)
         for div in results_html('div').items():
             if div.attr['class'] == 'results-all':
                 for sub_div in div('div').items():
@@ -144,8 +145,47 @@ class MatchBoxscores:
                 for a in div('a').items():
                     match_url = HLTV_BASE_URL + a.attr['href']
                     match = MatchBoxscore(match_url)
+                    import requests
                     self._matches.append(match)
-                    sleep(5)
+                    sleep(10)
+
+    # def _get_old_matches(self):
+    #     today = datetime.today().date()
+    #     yesterday = today + timedelta(days=-1)
+    #     d = today + timedelta(days=-1)
+    #     offset = 100
+    #     while offset >= 0:
+    #         if offset == 0:
+    #             url = 'https://www.hltv.org/results'
+    #         else:
+    #             url = 'https://www.hltv.org/results?offset=' + str(offset)
+    #         results_html = pq(url, verify=True)
+    #         for div in results_html('div').items():
+    #             if div.attr['class'] == 'results-all':
+    #                 for sub_div in div('div').items():
+    #                     found_date_sublist = False
+    #                     if sub_div.attr['class'] == 'results-sublist':
+    #                         # print(sub_div.text())
+    #                         header_text = sub_div.text().splitlines()[0]
+    #                         date_str = header_text.split('for')[1].strip()
+    #                         date_obj = parser.parse(date_str).date()
+    #                         if date_obj == d:
+    #                             print(date_obj)
+    #                             found_date_sublist = True
+    #                     if found_date_sublist:
+    #                         date_sublist_div = sub_div
+    #                         break
+    #                 if found_date_sublist:
+    #                     break
+
+    #     for div in date_sublist_div('div').items():
+    #         if div.attr['class'] == 'result-con':
+    #             for a in div('a').items():
+    #                 match_url = HLTV_BASE_URL + a.attr['href']
+    #                 match = MatchBoxscore(match_url)
+    #                 import requests
+    #                 self._matches.append(match)
+    #                 sleep(10)
 
     @property
     def dataframes(self):
