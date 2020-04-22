@@ -149,13 +149,13 @@ class Schedule:
 
             match_urls.reverse()  # So matches are in chronological order
             for match_url in match_urls:
-                print('Getting match data for ' + url)
                 match = Match(match_url)
                 self._matches.append(match)
+                break
                 sleep(8)
 
             print(self.dataframes)
-            response = requests.post('https://localhost:44374/api/csgo/schedule',
+            response = requests.post('https://localhost:44374/api/csgo/matches',
                                      json=self.to_dicts, verify=False).json()
             print(response)
             offset = offset - 100
